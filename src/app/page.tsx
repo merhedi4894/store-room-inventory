@@ -185,6 +185,7 @@ export default function Home() {
 
   // Search
   const [searchTerm, setSearchTerm] = useState("");
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Items list pagination
   const [itemPage, setItemPage] = useState(1);
@@ -240,6 +241,7 @@ export default function Home() {
     setItemPage(1);
     setActiveTab("dashboard");
     setSearchTerm("");
+    setShowMobileSearch(false);
   }, []);
 
   // Idle auto-logout
@@ -288,8 +290,9 @@ export default function Home() {
       setIsAuthenticated(true);
       setLoginError("");
       setLoginPassword("");
-      // Check if security answer is set
-      if (!localStorage.getItem(LS_SECURITY_KEY)) {
+      // Check if security answer is set (only show setup if never set before)
+      const hasSecurity = !!localStorage.getItem(LS_SECURITY_KEY);
+      if (!hasSecurity) {
         setShowSecuritySetup(true);
       }
     } else {
@@ -452,7 +455,7 @@ export default function Home() {
       setItemDesc("");
       setItemUnit("টি");
       setItemLowStock("");
-      setItemDialogOpen(false);
+      // Keep dialog open for quick consecutive entry
       refreshAfterItemChange();
       toast.success("নতুন আইটেম সংরক্ষণ হয়েছে");
     } else {
@@ -722,23 +725,12 @@ export default function Home() {
       r.receivedBy.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Items to display: first page 5 items, subsequent pages 10 items each
-  const FIRST_PAGE_COUNT = 5;
-  const SUBSEQUENT_PAGE_COUNT = 10;
-  const getItemsPerPage = (page: number) => page === 1 ? FIRST_PAGE_COUNT : SUBSEQUENT_PAGE_COUNT;
-  const calculateOffset = (page: number) => {
-    if (page <= 1) return 0;
-    return FIRST_PAGE_COUNT + (page - 2) * SUBSEQUENT_PAGE_COUNT;
-  };
-  const totalPages = (() => {
-    if (filteredItems.length <= FIRST_PAGE_COUNT) return 1;
-    const remaining = filteredItems.length - FIRST_PAGE_COUNT;
-    return 1 + Math.max(1, Math.ceil(remaining / SUBSEQUENT_PAGE_COUNT));
-  })();
+  // Items to display: 20 items per page in scroll
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(itemPage, totalPages);
-  const itemsPerPage = getItemsPerPage(currentPage);
-  const offset = calculateOffset(currentPage);
-  const displayItems = filteredItems.slice(offset, offset + itemsPerPage);
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayItems = filteredItems.slice(offset, offset + ITEMS_PER_PAGE);
 
   // ========== LOGIN OVERLAY ==========
   if (!isAuthenticated) {
@@ -874,7 +866,7 @@ export default function Home() {
             </div>
 
             <footer className="text-center text-xs sm:text-sm text-gray-400 pt-4">
-              <p>স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}</p>
+              <p>স্টোর রুম ম্যানেজমেন্ট ©{new Date().getFullYear()}</p>
               <p className="mt-1">Created By</p>
               <p className="mt-0.5">Md.Mehedi Hasan(Caretaker)</p>
             </footer>
@@ -917,7 +909,7 @@ export default function Home() {
                 variant="ghost"
                 size="sm"
                 className="sm:hidden text-white hover:bg-white/20 min-h-[44px] min-w-[44px]"
-                onClick={() => setSearchTerm(searchTerm ? "" : " ")}
+                onClick={() => setShowMobileSearch(!showMobileSearch)}
               >
                 <Search className="h-5 w-5" />
               </Button>
@@ -927,7 +919,7 @@ export default function Home() {
       </header>
 
       {/* Mobile Search */}
-      {searchTerm !== "" && (
+      {showMobileSearch && (
         <div className="sm:hidden px-3 pt-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -935,7 +927,7 @@ export default function Home() {
               placeholder="খুঁজুন..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 min-h-[44px]"
+              className="pl-10 min-h-[44px] text-gray-800"
               autoFocus
             />
           </div>
@@ -953,12 +945,25 @@ export default function Home() {
         </div>
       )}
 
-      {/* Loading State (only shown when authenticated) */}
+      {/* Loading State (splash screen with blinking multi-color icon) */}
       {loading && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <Warehouse className="h-16 w-16 text-emerald-600 animate-pulse" />
-            <p className="text-lg text-emerald-700 font-medium">লোড হচ্ছে...</p>
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative">
+              <Warehouse className="h-20 w-20 animate-pulse" style={{ color: '#10b981', filter: 'drop-shadow(0 0 12px rgba(16,185,129,0.5))' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border-2 border-emerald-400 animate-ping opacity-30" />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-28 h-28 rounded-full border border-teal-400 animate-spin opacity-20" style={{ animationDuration: '3s' }} />
+              </div>
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-xl font-bold bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 bg-clip-text text-transparent animate-pulse">
+                স্টোর রুম ম্যানেজমেন্ট এ আপনাকে স্বাগতম
+              </p>
+              <p className="text-sm text-emerald-600 animate-pulse">লোড হচ্ছে...</p>
+            </div>
           </div>
         </div>
       )}
@@ -967,23 +972,23 @@ export default function Home() {
       {!loading && (
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-1.5 sm:gap-2 bg-emerald-100/40 rounded-xl p-1.5">
-            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-emerald-50 transition-all duration-200 whitespace-nowrap">
+          <TabsList className="flex w-full gap-2 bg-transparent p-0">
+            <TabsTrigger value="dashboard" className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-xl data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 data-[state=inactive]:shadow-sm data-[state=inactive]:border data-[state=inactive]:border-gray-200 data-[state=inactive]:hover:bg-emerald-50 transition-all duration-200 whitespace-nowrap">
               <BarChart3 className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">ড্যাশবোর্ড</span>
               <span className="sm:hidden">ড্যাশ</span>
             </TabsTrigger>
-            <TabsTrigger value="incoming" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-blue-50 transition-all duration-200 whitespace-nowrap">
+            <TabsTrigger value="incoming" className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-xl data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 data-[state=inactive]:shadow-sm data-[state=inactive]:border data-[state=inactive]:border-gray-200 data-[state=inactive]:hover:bg-blue-50 transition-all duration-200 whitespace-nowrap">
               <PackagePlus className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">মালামাল ঢুকছে</span>
               <span className="sm:hidden">ঢুকছে</span>
             </TabsTrigger>
-            <TabsTrigger value="consumed" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-orange-50 transition-all duration-200 whitespace-nowrap">
+            <TabsTrigger value="consumed" className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-xl data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 data-[state=inactive]:shadow-sm data-[state=inactive]:border data-[state=inactive]:border-gray-200 data-[state=inactive]:hover:bg-amber-50 transition-all duration-200 whitespace-nowrap">
               <PackageX className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">নস্ট হচ্ছে</span>
               <span className="sm:hidden">নস্ট</span>
             </TabsTrigger>
-            <TabsTrigger value="transferred" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-rose-50 transition-all duration-200 whitespace-nowrap">
+            <TabsTrigger value="transferred" className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow-md min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-xl data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 data-[state=inactive]:shadow-sm data-[state=inactive]:border data-[state=inactive]:border-gray-200 data-[state=inactive]:hover:bg-violet-50 transition-all duration-200 whitespace-nowrap">
               <Truck className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">স্থানান্তরিত</span>
               <span className="sm:hidden">স্থান.</span>
@@ -1679,7 +1684,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-8 pb-4 text-center text-xs sm:text-sm text-gray-400">
-          <p>স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}</p>
+          <p>স্টোর রুম ম্যানেজমেন্ট ©{new Date().getFullYear()}</p>
           <p className="mt-1">Created By</p>
           <p className="mt-0.5">Md.Mehedi Hasan(Caretaker)</p>
         </footer>
