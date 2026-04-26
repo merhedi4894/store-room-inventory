@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -324,17 +325,25 @@ export default function Home() {
     }
   }, []);
 
+  const fetchAllSilent = useCallback(async () => {
+    try {
+      await Promise.all([fetchItems(), fetchIncoming(), fetchConsumed(), fetchTransferred(), fetchDashboard()]);
+    } catch {
+      // silent refresh
+    }
+  }, [fetchItems, fetchIncoming, fetchConsumed, fetchTransferred, fetchDashboard]);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      await Promise.all([fetchItems(), fetchIncoming(), fetchConsumed(), fetchTransferred(), fetchDashboard()]);
+      await fetchAllSilent();
     } catch {
       setError("ডেটা লোড করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
-  }, [fetchItems, fetchIncoming, fetchConsumed, fetchTransferred, fetchDashboard]);
+  }, [fetchAllSilent]);
 
   useEffect(() => {
     fetchAll();
@@ -354,10 +363,11 @@ export default function Home() {
       setItemUnit("টি");
       setItemLowStock("");
       setItemDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("নতুন আইটেম সংরক্ষণ হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "আইটেম যোগ করতে সমস্যা হয়েছে");
+      toast.error(data.error || "আইটেম যোগ করতে সমস্যা হয়েছে");
     }
   };
 
@@ -375,17 +385,21 @@ export default function Home() {
       setItemLowStock("");
       setEditItemId(null);
       setItemDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("আইটেম আপডেট হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "আইটেম আপডেট করতে সমস্যা হয়েছে");
+      toast.error(data.error || "আইটেম আপডেট করতে সমস্যা হয়েছে");
     }
   };
 
   const handleDeleteItem = async (id: string) => {
     if (!confirm("আপনি কি এই আইটেম মুছে ফেলতে চান? এর সাথে সম্পর্কিত সব রেকর্ডও মুছে যাবে।")) return;
     const res = await fetch(`/api/items?id=${id}`, { method: "DELETE" });
-    if (res.ok) fetchAll();
+    if (res.ok) {
+      fetchAllSilent();
+      toast.success("আইটেম মুছে ফেলা হয়েছে");
+    }
   };
 
   const handleEditItem = (item: Item) => {
@@ -418,10 +432,11 @@ export default function Home() {
     if (res.ok) {
       setIncItemId(""); setIncQty(""); setIncSupplier(""); setIncNote("");
       setEditIncId(null); setIncDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("মালামাল ঢুকানো রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
     }
   };
 
@@ -435,17 +450,21 @@ export default function Home() {
     if (res.ok) {
       setIncItemId(""); setIncQty(""); setIncSupplier(""); setIncNote("");
       setIncDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("নতুন মালামাল ঢুকানো রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
     }
   };
 
   const handleDeleteIncoming = async (id: string) => {
     if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
     const res = await fetch(`/api/incoming?id=${id}`, { method: "DELETE" });
-    if (res.ok) fetchAll();
+    if (res.ok) {
+      fetchAllSilent();
+      toast.success("মালামাল ঢুকানো রেকর্ড মুছে ফেলা হয়েছে");
+    }
   };
 
   // Consumed CRUD
@@ -468,10 +487,11 @@ export default function Home() {
     if (res.ok) {
       setConItemId(""); setConQty(""); setConNote("");
       setEditConId(null); setConDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("নস্ট রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
     }
   };
 
@@ -485,17 +505,21 @@ export default function Home() {
     if (res.ok) {
       setConItemId(""); setConQty(""); setConNote("");
       setConDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("নতুন নস্ট রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
     }
   };
 
   const handleDeleteConsumed = async (id: string) => {
     if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
     const res = await fetch(`/api/consumed?id=${id}`, { method: "DELETE" });
-    if (res.ok) fetchAll();
+    if (res.ok) {
+      fetchAllSilent();
+      toast.success("নস্ট রেকর্ড মুছে ফেলা হয়েছে");
+    }
   };
 
   // Transferred CRUD
@@ -524,10 +548,11 @@ export default function Home() {
     if (res.ok) {
       setTraItemId(""); setTraQty(""); setTraTo(""); setTraPurpose(""); setTraReceivedBy(""); setTraNote("");
       setEditTraId(null); setTraDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("স্থানান্তর রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড আপডেট করতে সমস্যা হয়েছে");
     }
   };
 
@@ -554,17 +579,21 @@ export default function Home() {
       setTraReceivedBy("");
       setTraNote("");
       setTraDialogOpen(false);
-      fetchAll();
+      fetchAllSilent();
+      toast.success("নতুন স্থানান্তর রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
-      setError(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
+      toast.error(data.error || "রেকর্ড যোগ করতে সমস্যা হয়েছে");
     }
   };
 
   const handleDeleteTransferred = async (id: string) => {
     if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
     const res = await fetch(`/api/transferred?id=${id}`, { method: "DELETE" });
-    if (res.ok) fetchAll();
+    if (res.ok) {
+      fetchAllSilent();
+      toast.success("স্থানান্তর রেকর্ড মুছে ফেলা হয়েছে");
+    }
   };
 
   const filteredItems = items.filter(
