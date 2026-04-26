@@ -1,0 +1,57 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  unit              String   @default("টি")
+  lowStockThreshold Int?
+  createdAt         DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  incomingRecords    IncomingItem[]
+  consumedRecords    ConsumedItem[]
+  transferredRecords TransferredItem[]
+}
+
+model IncomingItem {
+  id          String   @id @default(cuid())
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id])
+  quantity    Int
+  date        DateTime @default(now())
+  supplier    String?
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+model ConsumedItem {
+  id          String   @id @default(cuid())
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id])
+  quantity    Int
+  date        DateTime @default(now())
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+model TransferredItem {
+  id           String   @id @default(cuid())
+  itemId       String
+  item         Item     @relation(fields: [itemId], references: [id])
+  quantity     Int
+  transferredTo String
+  purpose      String?
+  receivedBy   String
+  date         DateTime @default(now())
+  note         String?
+  createdAt    DateTime @default(now())
+}
