@@ -394,6 +394,31 @@ export default function Home() {
     }
   }, [fetchItems, fetchIncoming, fetchConsumed, fetchTransferred, fetchDashboard]);
 
+  // Targeted refresh functions for faster updates
+  const refreshAfterItemChange = useCallback(async () => {
+    try {
+      await Promise.all([fetchItems(), fetchDashboard()]);
+    } catch { /* silent */ }
+  }, [fetchItems, fetchDashboard]);
+
+  const refreshAfterIncomingChange = useCallback(async () => {
+    try {
+      await Promise.all([fetchItems(), fetchIncoming(), fetchDashboard()]);
+    } catch { /* silent */ }
+  }, [fetchItems, fetchIncoming, fetchDashboard]);
+
+  const refreshAfterConsumedChange = useCallback(async () => {
+    try {
+      await Promise.all([fetchItems(), fetchConsumed(), fetchDashboard()]);
+    } catch { /* silent */ }
+  }, [fetchItems, fetchConsumed, fetchDashboard]);
+
+  const refreshAfterTransferredChange = useCallback(async () => {
+    try {
+      await Promise.all([fetchItems(), fetchTransferred(), fetchDashboard()]);
+    } catch { /* silent */ }
+  }, [fetchItems, fetchTransferred, fetchDashboard]);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -424,7 +449,7 @@ export default function Home() {
       setItemUnit("টি");
       setItemLowStock("");
       setItemDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterItemChange();
       toast.success("নতুন আইটেম সংরক্ষণ হয়েছে");
     } else {
       const data = await res.json();
@@ -446,7 +471,7 @@ export default function Home() {
       setItemLowStock("");
       setEditItemId(null);
       setItemDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterItemChange();
       toast.success("আইটেম আপডেট হয়েছে");
     } else {
       const data = await res.json();
@@ -458,7 +483,7 @@ export default function Home() {
     const doDelete = async () => {
       const res = await fetch(`/api/items?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchAllSilent();
+        refreshAfterItemChange();
         toast.success("আইটেম মুছে ফেলা হয়েছে");
       }
     };
@@ -496,7 +521,7 @@ export default function Home() {
     if (res.ok) {
       setIncItemId(""); setIncQty(""); setIncSupplier(""); setIncNote("");
       setEditIncId(null); setIncDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterIncomingChange();
       toast.success("মালামাল ঢুকানো রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
@@ -514,7 +539,7 @@ export default function Home() {
     if (res.ok) {
       setIncItemId(""); setIncQty(""); setIncSupplier(""); setIncNote("");
       setIncDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterIncomingChange();
       toast.success("নতুন মালামাল ঢুকানো রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
@@ -526,7 +551,7 @@ export default function Home() {
     const doDelete = async () => {
       const res = await fetch(`/api/incoming?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchAllSilent();
+        refreshAfterIncomingChange();
         toast.success("মালামাল ঢুকানো রেকর্ড মুছে ফেলা হয়েছে");
       }
     };
@@ -554,7 +579,7 @@ export default function Home() {
     if (res.ok) {
       setConItemId(""); setConQty(""); setConNote("");
       setEditConId(null); setConDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterConsumedChange();
       toast.success("নস্ট রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
@@ -572,7 +597,7 @@ export default function Home() {
     if (res.ok) {
       setConItemId(""); setConQty(""); setConNote("");
       setConDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterConsumedChange();
       toast.success("নতুন নস্ট রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
@@ -584,7 +609,7 @@ export default function Home() {
     const doDelete = async () => {
       const res = await fetch(`/api/consumed?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchAllSilent();
+        refreshAfterConsumedChange();
         toast.success("নস্ট রেকর্ড মুছে ফেলা হয়েছে");
       }
     };
@@ -618,7 +643,7 @@ export default function Home() {
     if (res.ok) {
       setTraItemId(""); setTraQty(""); setTraTo(""); setTraPurpose(""); setTraReceivedBy(""); setTraNote("");
       setEditTraId(null); setTraDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterTransferredChange();
       toast.success("স্থানান্তর রেকর্ড আপডেট হয়েছে");
     } else {
       const data = await res.json();
@@ -649,7 +674,7 @@ export default function Home() {
       setTraReceivedBy("");
       setTraNote("");
       setTraDialogOpen(false);
-      fetchAllSilent();
+      refreshAfterTransferredChange();
       toast.success("নতুন স্থানান্তর রেকর্ড সংরক্ষিত হয়েছে");
     } else {
       const data = await res.json();
@@ -661,7 +686,7 @@ export default function Home() {
     const doDelete = async () => {
       const res = await fetch(`/api/transferred?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchAllSilent();
+        refreshAfterTransferredChange();
         toast.success("স্থানান্তর রেকর্ড মুছে ফেলা হয়েছে");
       }
     };
@@ -731,11 +756,11 @@ export default function Home() {
                 </div>
                 <div>
                   <Label>আপনার উত্তর *</Label>
-                  <Input placeholder="উত্তর লিখুন" value={securityAnswer} onChange={(e) => { setSecurityAnswer(e.target.value); setSecuritySetupError(""); }} className="min-h-[44px] mt-1" />
+                  <Input placeholder="উত্তর লিখুন" value={securityAnswer} onChange={(e) => { setSecurityAnswer(e.target.value); setSecuritySetupError(""); }} className="min-h-[44px] mt-1" onKeyDown={(e) => e.key === "Enter" && handleSecuritySetup()} />
                 </div>
                 <div>
                   <Label>উত্তর নিশ্চিত করুন *</Label>
-                  <Input placeholder="আবার উত্তর লিখুন" value={securitySetupConfirm} onChange={(e) => { setSecuritySetupConfirm(e.target.value); setSecuritySetupError(""); }} className="min-h-[44px] mt-1" />
+                  <Input placeholder="আবার উত্তর লিখুন" value={securitySetupConfirm} onChange={(e) => { setSecuritySetupConfirm(e.target.value); setSecuritySetupError(""); }} className="min-h-[44px] mt-1" onKeyDown={(e) => e.key === "Enter" && handleSecuritySetup()} />
                 </div>
               </div>
               {securitySetupError && <p className="text-sm text-red-600 text-center">{securitySetupError}</p>}
@@ -774,7 +799,7 @@ export default function Home() {
                   <p className="text-sm text-green-600 font-medium text-center">নিরাপত্তা উত্তর সঠিক! নতুন পাসওয়ার্ড দিন।</p>
                   <div>
                     <Label>নতুন পাসওয়ার্ড *</Label>
-                    <Input type="password" placeholder="নতুন পাসওয়ার্ড" value={forgotNewPass} onChange={(e) => { setForgotNewPass(e.target.value); setForgotError(""); }} className="min-h-[44px] mt-1" />
+                    <Input type="password" placeholder="নতুন পাসওয়ার্ড" value={forgotNewPass} onChange={(e) => { setForgotNewPass(e.target.value); setForgotError(""); }} className="min-h-[44px] mt-1" onKeyDown={(e) => e.key === "Enter" && handleForgotStep2()} />
                   </div>
                   <div>
                     <Label>পাসওয়ার্ড নিশ্চিত করুন *</Label>
@@ -804,7 +829,7 @@ export default function Home() {
               <div className="mx-auto w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <Warehouse className="h-9 w-9 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-800">স্টোর রুম ইনভেন্টরি</h1>
+              <h1 className="text-2xl font-bold text-gray-800">স্টোর রুম ম্যানেজমেন্ট</h1>
               <p className="text-sm text-gray-500">প্রবেশ করতে পাসওয়ার্ড দিন</p>
             </div>
 
@@ -856,14 +881,12 @@ export default function Home() {
       {/* Header - compact on mobile */}
       <header className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-5">
-          <div className="flex items-center justify-between">
+          <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <Warehouse className="h-6 w-6 sm:h-8 sm:w-8" />
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold leading-tight">স্টোর রুম ইনভেন্টরি</h1>
-                <p className="text-emerald-200 text-xs sm:text-sm hidden xs:inline">বিল্ডিং স্টোর রুম মালামাল ট্র্যাকিং সিস্টেম</p>
-              </div>
+              <p className="text-emerald-200 text-xs sm:text-sm hidden sm:inline">বিল্ডিং স্টোর রুম মালামাল ট্র্যাকিং সিস্টেম</p>
             </div>
+            <h1 className="absolute left-1/2 -translate-x-1/2 text-lg sm:text-2xl font-bold leading-tight whitespace-nowrap">স্টোর রুম ম্যানেজমেন্ট</h1>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -926,23 +949,23 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-1 sm:gap-2 bg-white shadow-sm p-1 overflow-hidden">
-            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white min-h-[44px] text-xs sm:text-sm">
+          <TabsList className="grid w-full grid-cols-4 gap-1 sm:gap-2 bg-white shadow-md border border-gray-100 rounded-xl p-1.5 overflow-hidden">
+            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-emerald-50 data-[state=inactive]:hover:text-emerald-700 transition-all duration-200">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">ড্যাশবোর্ড</span>
               <span className="sm:hidden">ড্যাশ</span>
             </TabsTrigger>
-            <TabsTrigger value="incoming" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white min-h-[44px] text-xs sm:text-sm">
+            <TabsTrigger value="incoming" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-blue-50 data-[state=inactive]:hover:text-blue-700 transition-all duration-200">
               <PackagePlus className="h-4 w-4" />
               <span className="hidden sm:inline">মালামাল ঢুকছে</span>
               <span className="sm:hidden">ঢুকছে</span>
             </TabsTrigger>
-            <TabsTrigger value="consumed" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white min-h-[44px] text-xs sm:text-sm">
+            <TabsTrigger value="consumed" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-orange-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-orange-50 data-[state=inactive]:hover:text-orange-700 transition-all duration-200">
               <PackageX className="h-4 w-4" />
               <span className="hidden sm:inline">নস্ট হচ্ছে</span>
               <span className="sm:hidden">নস্ট</span>
             </TabsTrigger>
-            <TabsTrigger value="transferred" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white min-h-[44px] text-xs sm:text-sm">
+            <TabsTrigger value="transferred" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-rose-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-rose-50 data-[state=inactive]:hover:text-rose-700 transition-all duration-200">
               <Truck className="h-4 w-4" />
               <span className="hidden sm:inline">স্থানান্তরিত</span>
               <span className="sm:hidden">স্থানান্তর</span>
@@ -964,14 +987,11 @@ export default function Home() {
                       <CardDescription className="text-red-500 text-sm">নিচের আইটেমগুলোর স্টক নির্ধারিত সীমার নিচে নেমে গেছে</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {dashboardData.lowStockItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                            <div>
-                              <p className="font-medium text-gray-800">{item.name}</p>
-                              <p className="text-sm text-gray-500">স্টক: {item.stock} {item.unit}</p>
-                            </div>
-                            <Badge variant={item.stock === 0 ? "destructive" : "secondary"} className={item.stock === 0 ? "" : "bg-orange-100 text-orange-700"}>
+                          <div key={item.id} className="flex items-center justify-between bg-white rounded-md px-3 py-1.5 shadow-sm border border-red-100">
+                            <p className="font-medium text-gray-800 text-sm">{item.name}</p>
+                            <Badge variant={item.stock === 0 ? "destructive" : "secondary"} className={item.stock === 0 ? "text-xs" : "bg-orange-100 text-orange-700 text-xs"}>
                               {item.stock === 0 ? "শেষ" : `${item.stock} ${item.unit}`}
                             </Badge>
                           </div>
@@ -1012,7 +1032,7 @@ export default function Home() {
                     </DialogTitle>
                     <DialogDescription>{editIncId ? "রেকর্ড আপডেট করুন" : "স্টোর রুমে নতুন মালামাল যোগ করুন"}</DialogDescription>
                   </DialogHeader>
-                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4">
+                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4" onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") { e.preventDefault(); editIncId ? handleUpdateIncoming() : handleAddIncoming(); } }}>
                       <div>
                         <Label>আইটেম নির্বাচন করুন *</Label>
                         <Select value={incItemId} onValueChange={setIncItemId}>
@@ -1179,7 +1199,7 @@ export default function Home() {
                     </DialogTitle>
                     <DialogDescription>{editConId ? "রেকর্ড আপডেট করুন" : "স্টোর রুম থেকে নস্ট হওয়া মালামাল যোগ করুন"}</DialogDescription>
                   </DialogHeader>
-                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4">
+                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4" onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") { e.preventDefault(); editConId ? handleUpdateConsumed() : handleAddConsumed(); } }}>
                       <div>
                         <Label>আইটেম নির্বাচন করুন *</Label>
                         <Select value={conItemId} onValueChange={setConItemId}>
@@ -1333,7 +1353,7 @@ export default function Home() {
                     </DialogTitle>
                     <DialogDescription>{editTraId ? "রেকর্ড আপডেট করুন" : "স্টোর রুম থেকে অন্য জায়গায় নেওয়ার রেকর্ড করুন"}</DialogDescription>
                   </DialogHeader>
-                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4">
+                  <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4" onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") { e.preventDefault(); editTraId ? handleUpdateTransferred() : handleAddTransferred(); } }}>
                       <div>
                         <Label>আইটেম নির্বাচন করুন *</Label>
                         <Select value={traItemId} onValueChange={setTraItemId}>
@@ -1533,7 +1553,7 @@ export default function Home() {
                         {editItemId ? "আইটেমের তথ্য আপডেট করুন" : "স্টোর রুমে নতুন আইটেম যোগ করুন"}
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4">
+                    <div className="overflow-y-auto -mx-1 px-1 py-1 space-y-4" onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") { e.preventDefault(); editItemId ? handleUpdateItem() : handleAddItem(); } }}>
                       <div>
                         <Label>আইটেমের নাম *</Label>
                         <Input placeholder="যেমন: সিমেন্ট, ইট, নাট-বল্টু" value={itemName} onChange={(e) => setItemName(e.target.value)} className="min-h-[44px]" />
@@ -1641,7 +1661,9 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-8 pb-4 text-center text-xs sm:text-sm text-gray-400">
-          স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}
+          <p>স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}</p>
+          <p className="mt-1">Created By</p>
+          <p className="mt-0.5">Md.Mehedi Hasan(Caretaker)</p>
         </footer>
       </main>
 
