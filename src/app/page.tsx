@@ -142,7 +142,7 @@ export default function Home() {
   const [consumedRecords, setConsumedRecords] = useState<ConsumedRecord[]>([]);
   const [transferredRecords, setTransferredRecords] = useState<TransferredRecord[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Form states
@@ -431,12 +431,7 @@ export default function Home() {
     }
   }, [fetchAllSilent]);
 
-  // Initial load on mount
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  // Re-fetch data when user logs in (fixes items not showing after login)
+  // Fetch data only when authenticated (after login or session restore)
   useEffect(() => {
     if (isAuthenticated) {
       fetchAll();
@@ -733,17 +728,6 @@ export default function Home() {
   const currentPage = Math.min(itemPage, totalPages);
   const displayItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
-        <div className="flex flex-col items-center gap-4">
-          <Warehouse className="h-16 w-16 text-emerald-600 animate-pulse" />
-          <p className="text-lg text-emerald-700 font-medium">লোড হচ্ছে...</p>
-        </div>
-      </div>
-    );
-  }
-
   // ========== LOGIN OVERLAY ==========
   if (!isAuthenticated) {
     return (
@@ -956,10 +940,21 @@ export default function Home() {
         </div>
       )}
 
+      {/* Loading State (only shown when authenticated) */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Warehouse className="h-16 w-16 text-emerald-600 animate-pulse" />
+            <p className="text-lg text-emerald-700 font-medium">লোড হচ্ছে...</p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
+      {!loading && (
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-1.5 sm:gap-2 bg-white shadow-md border border-gray-200 rounded-xl p-1.5">
+          <TabsList className="grid w-full grid-cols-4 gap-1.5 sm:gap-2 bg-emerald-100/40 rounded-xl p-1.5">
             <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-emerald-50 transition-all duration-200 whitespace-nowrap">
               <BarChart3 className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">ড্যাশবোর্ড</span>
@@ -1676,6 +1671,7 @@ export default function Home() {
           <p className="mt-0.5">Md.Mehedi Hasan(Caretaker)</p>
         </footer>
       </main>
+      )}
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirmOpen && (

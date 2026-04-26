@@ -67,12 +67,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'আইটেমের নাম আবশ্যক' }, { status: 400 });
     }
 
+    let threshold: number | null = null;
+    if (lowStockThreshold !== undefined && lowStockThreshold !== null && lowStockThreshold !== '') {
+      const parsed = parseInt(lowStockThreshold);
+      if (!isNaN(parsed) && parsed >= 0) {
+        threshold = parsed;
+      }
+    }
+
     const item = await (await db()).item.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         unit: unit?.trim() || 'টি',
-        lowStockThreshold: lowStockThreshold !== undefined && lowStockThreshold !== null && lowStockThreshold !== '' ? parseInt(lowStockThreshold) : null,
+        lowStockThreshold: threshold,
       },
     });
 
@@ -115,13 +123,21 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'আইডি এবং নাম আবশ্যক' }, { status: 400 });
     }
 
+    let threshold: number | null = null;
+    if (lowStockThreshold !== undefined && lowStockThreshold !== null && lowStockThreshold !== '') {
+      const parsed = parseInt(lowStockThreshold);
+      if (!isNaN(parsed) && parsed >= 0) {
+        threshold = parsed;
+      }
+    }
+
     const item = await (await db()).item.update({
       where: { id },
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         unit: unit?.trim() || 'টি',
-        lowStockThreshold: lowStockThreshold !== undefined && lowStockThreshold !== null && lowStockThreshold !== '' ? parseInt(lowStockThreshold) : null,
+        lowStockThreshold: threshold,
       },
     });
 
