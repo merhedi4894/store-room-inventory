@@ -1,59 +1,88 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/dashboard - Get dashboard statistics
+// GET /api/dashboard - Get dashboard statistics (optimized with parallel queries)
 export async function GET() {
   try {
-    const totalItems = await (await db()).item.count();
+    const database = await db();
 
-    const totalIncomingRecords = await (await db()).incomingItem.count();
-    const totalConsumedRecords = await (await db()).consumedItem.count();
-    const totalTransferredRecords = await (await db()).transferredItem.count();
+    // Run all independent queries in parallel
+    const [
+      totalItems,
+      totalIncomingRecords,
+      totalConsumedRecords,
+      totalTransferredRecords,
+      totalIncomingQty,
+      totalConsumedQty,
+      totalTransferredQty,
+      recentIncoming,
+      recentConsumed,
+      recentTransferred,
+      allItems,
+    ] = await Promise.all([
+      database.item.count(),
+      database.incomingItem.count(),
+      database.consumedItem.count(),
+      database.transferredItem.count(),
+      database.incomingItem.aggregate({ _sum: { quantity: true } }),
+      database.consumedItem.aggregate({ _sum: { quantity: true } }),
+      database.transferredItem.aggregate({ _sum: { quantity: true } }),
+      database.incomingItem.findMany({
+        orderBy: { date: 'desc' },
+        take: 10,
+        include: { item: true },
+      }),
+      database.consumedItem.findMany({
+        orderBy: { date: 'desc' },
+        take: 10,
+        include: { item: true },
+      }),
+      database.transferredItem.findMany({
+        orderBy: { date: 'desc' },
+        take: 10,
+        include: { item: true },
+      }),
+      database.item.findMany(),
+    ]);
 
-    const totalIncomingQty = await (await db()).incomingItem.aggregate({
-      _sum: { quantity: true },
-    });
+    // Low stock items - batch aggregate instead of N+1 queries
+    const itemsWithThreshold = allItems.filter(
+      (item) => item.lowStockThreshold !== null && item.lowStockThreshold !== undefined
+    );
 
-    const totalConsumedQty = await (await db()).consumedItem.aggregate({
-      _sum: { quantity: true },
-    });
-
-    const totalTransferredQty = await (await db()).transferredItem.aggregate({
-      _sum: { quantity: true },
-    });
-
-    // Recent activities (last 20)
-    const recentIncoming = await (await db()).incomingItem.findMany({
-      orderBy: { date: 'desc' },
-      take: 10,
-      include: { item: true },
-    });
-
-    const recentConsumed = await (await db()).consumedItem.findMany({
-      orderBy: { date: 'desc' },
-      take: 10,
-      include: { item: true },
-    });
-
-    const recentTransferred = await (await db()).transferredItem.findMany({
-      orderBy: { date: 'desc' },
-      take: 10,
-      include: { item: true },
-    });
-
-    // Low stock items (stock <= item's lowStockThreshold, only if threshold is set)
-    const allItems = await (await db()).item.findMany();
     const lowStockItems = [];
+    if (itemsWithThreshold.length > 0) {
+      const itemIds = itemsWithThreshold.map((i) => i.id);
 
-    for (const item of allItems) {
-      if (item.lowStockThreshold === null || item.lowStockThreshold === undefined) continue;
-      const inc = await (await db()).incomingItem.aggregate({ _sum: { quantity: true }, where: { itemId: item.id } });
-      const con = await (await db()).consumedItem.aggregate({ _sum: { quantity: true }, where: { itemId: item.id } });
-      const tra = await (await db()).transferredItem.aggregate({ _sum: { quantity: true }, where: { itemId: item.id } });
+      // Batch aggregates for all items at once
+      const [allIncoming, allConsumed, allTransferred] = await Promise.all([
+        database.incomingItem.groupBy({
+          by: ['itemId'],
+          where: { itemId: { in: itemIds } },
+          _sum: { quantity: true },
+        }),
+        database.consumedItem.groupBy({
+          by: ['itemId'],
+          where: { itemId: { in: itemIds } },
+          _sum: { quantity: true },
+        }),
+        database.transferredItem.groupBy({
+          by: ['itemId'],
+          where: { itemId: { in: itemIds } },
+          _sum: { quantity: true },
+        }),
+      ]);
 
-      const stock = (inc._sum.quantity || 0) - (con._sum.quantity || 0) - (tra._sum.quantity || 0);
-      if (stock <= item.lowStockThreshold) {
-        lowStockItems.push({ ...item, stock });
+      // Build lookup maps
+      const incMap = new Map(allIncoming.map((r) => [r.itemId, r._sum.quantity || 0]));
+      const conMap = new Map(allConsumed.map((r) => [r.itemId, r._sum.quantity || 0]));
+      const traMap = new Map(allTransferred.map((r) => [r.itemId, r._sum.quantity || 0]));
+
+      for (const item of itemsWithThreshold) {
+        const stock = (incMap.get(item.id) || 0) - (conMap.get(item.id) || 0) - (traMap.get(item.id) || 0);
+        if (stock <= item.lowStockThreshold) {
+          lowStockItems.push({ ...item, stock });
+        }
       }
     }
 

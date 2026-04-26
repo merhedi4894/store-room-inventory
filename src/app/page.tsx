@@ -722,11 +722,23 @@ export default function Home() {
       r.receivedBy.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Items to display (5 per page with pagination)
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  // Items to display: first page 5 items, subsequent pages 10 items each
+  const FIRST_PAGE_COUNT = 5;
+  const SUBSEQUENT_PAGE_COUNT = 10;
+  const getItemsPerPage = (page: number) => page === 1 ? FIRST_PAGE_COUNT : SUBSEQUENT_PAGE_COUNT;
+  const calculateOffset = (page: number) => {
+    if (page <= 1) return 0;
+    return FIRST_PAGE_COUNT + (page - 2) * SUBSEQUENT_PAGE_COUNT;
+  };
+  const totalPages = (() => {
+    if (filteredItems.length <= FIRST_PAGE_COUNT) return 1;
+    const remaining = filteredItems.length - FIRST_PAGE_COUNT;
+    return 1 + Math.max(1, Math.ceil(remaining / SUBSEQUENT_PAGE_COUNT));
+  })();
   const currentPage = Math.min(itemPage, totalPages);
-  const displayItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const itemsPerPage = getItemsPerPage(currentPage);
+  const offset = calculateOffset(currentPage);
+  const displayItems = filteredItems.slice(offset, offset + itemsPerPage);
 
   // ========== LOGIN OVERLAY ==========
   if (!isAuthenticated) {
@@ -861,9 +873,11 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="text-xs text-gray-400 text-center">
-              স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}
-            </p>
+            <footer className="text-center text-xs sm:text-sm text-gray-400 pt-4">
+              <p>স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}</p>
+              <p className="mt-1">Created By</p>
+              <p className="mt-0.5">Md.Mehedi Hasan(Caretaker)</p>
+            </footer>
           </div>
         </div>
       </div>
@@ -876,9 +890,8 @@ export default function Home() {
       <header className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-5">
           <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center">
               <Warehouse className="h-6 w-6 sm:h-8 sm:w-8" />
-              <p className="text-emerald-200 text-xs sm:text-sm hidden sm:inline">বিল্ডিং স্টোর রুম মালামাল ট্র্যাকিং সিস্টেম</p>
             </div>
             <h1 className="absolute left-1/2 -translate-x-1/2 text-lg sm:text-2xl font-bold leading-tight whitespace-nowrap">স্টোর রুম ম্যানেজমেন্ট</h1>
             <div className="flex items-center gap-2">
@@ -992,11 +1005,11 @@ export default function Home() {
                       <CardDescription className="text-red-500 text-sm">নিচের আইটেমগুলোর স্টক নির্ধারিত সীমার নিচে নেমে গেছে</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {dashboardData.lowStockItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between bg-white rounded-md px-3 py-1.5 shadow-sm border border-red-100">
-                            <p className="font-medium text-gray-800 text-sm">{item.name}</p>
-                            <Badge variant={item.stock === 0 ? "destructive" : "secondary"} className={item.stock === 0 ? "text-xs" : "bg-orange-100 text-orange-700 text-xs"}>
+                          <div key={item.id} className="inline-flex items-center gap-1 bg-white rounded px-2 py-0.5 shadow-sm border border-red-100">
+                            <p className="font-medium text-gray-800 text-xs">{item.name}</p>
+                            <Badge variant={item.stock === 0 ? "destructive" : "secondary"} className={item.stock === 0 ? "text-[10px] px-1.5 py-0" : "bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0"}>
                               {item.stock === 0 ? "শেষ" : `${item.stock} ${item.unit}`}
                             </Badge>
                           </div>
@@ -1621,20 +1634,20 @@ export default function Home() {
                     const isOutOfStock = item.stock === 0;
                     return (
                       <div key={item.id} className="flex items-center gap-1.5 sm:gap-3 py-2 px-2 sm:px-3 rounded-md hover:bg-emerald-50/50 border-b border-gray-100 last:border-0 text-xs sm:text-sm">
-                        <span className="text-gray-400 text-xs w-5 text-center flex-shrink-0">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</span>
+                        <span className="text-gray-400 text-xs w-5 text-center flex-shrink-0">{offset + idx + 1}</span>
                         <span className="font-medium text-gray-800 flex-shrink-0 min-w-0 truncate max-w-[80px] sm:max-w-[180px]" title={item.name}>{item.name}</span>
                         <Badge className={
                           isOutOfStock
-                            ? "bg-red-100 text-red-700 text-xs flex-shrink-0"
+                            ? "bg-violet-100 text-violet-700 text-xs flex-shrink-0"
                             : isLowStock
-                              ? "bg-orange-100 text-orange-700 text-xs flex-shrink-0"
+                              ? "bg-amber-100 text-amber-700 text-xs flex-shrink-0"
                               : "bg-emerald-100 text-emerald-700 text-xs flex-shrink-0"
                         }>
                           স্টক: {item.stock} {item.unit}
                         </Badge>
-                        <span className="text-xs text-blue-600 flex-shrink-0 font-medium">ঢুকেছে: {item.totalIncoming}</span>
-                        <span className="text-xs text-red-500 flex-shrink-0 font-medium">নস্ট: {item.totalConsumed}</span>
-                        <span className="text-xs text-[#E8272C] flex-shrink-0 font-medium">স্থানান্তর: {item.totalTransferred}</span>
+                        <span className="text-xs text-cyan-600 flex-shrink-0 font-semibold">ঢুকেছে: {item.totalIncoming}</span>
+                        <span className="text-xs text-pink-600 flex-shrink-0 font-semibold">নস্ট: {item.totalConsumed}</span>
+                        <span className="text-xs text-indigo-600 flex-shrink-0 font-semibold">স্থানান্তর: {item.totalTransferred}</span>
                         <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
                           <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-7 w-7 p-0" onClick={() => handleEditItem(item)}>
                             <Edit2 className="h-3.5 w-3.5" />

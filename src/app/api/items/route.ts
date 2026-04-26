@@ -1,54 +1,59 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/items - Get all items
+// GET /api/items - Get all items (optimized with batch queries)
 export async function GET() {
   try {
-    const items = await (await db()).item.findMany({
+    const database = await db();
+
+    const items = await database.item.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: {
-            incomingRecords: true,
-            consumedRecords: true,
-            transferredRecords: true,
-          },
-        },
-      },
     });
 
-    // Calculate stock for each item
-    const itemsWithStock = await Promise.all(
-      items.map(async (item) => {
-        const totalIncoming = await (await db()).incomingItem.aggregate({
-          _sum: { quantity: true },
-          where: { itemId: item.id },
-        });
+    if (items.length === 0) {
+      return NextResponse.json([]);
+    }
 
-        const totalConsumed = await (await db()).consumedItem.aggregate({
-          _sum: { quantity: true },
-          where: { itemId: item.id },
-        });
+    const itemIds = items.map((i) => i.id);
 
-        const totalTransferred = await (await db()).transferredItem.aggregate({
-          _sum: { quantity: true },
-          where: { itemId: item.id },
-        });
+    // Batch aggregates for all items at once
+    const [allIncoming, allConsumed, allTransferred] = await Promise.all([
+      database.incomingItem.groupBy({
+        by: ['itemId'],
+        where: { itemId: { in: itemIds } },
+        _sum: { quantity: true },
+      }),
+      database.consumedItem.groupBy({
+        by: ['itemId'],
+        where: { itemId: { in: itemIds } },
+        _sum: { quantity: true },
+      }),
+      database.transferredItem.groupBy({
+        by: ['itemId'],
+        where: { itemId: { in: itemIds } },
+        _sum: { quantity: true },
+      }),
+    ]);
 
-        const stock =
-          (totalIncoming._sum.quantity || 0) -
-          (totalConsumed._sum.quantity || 0) -
-          (totalTransferred._sum.quantity || 0);
+    // Build lookup maps
+    const incMap = new Map(allIncoming.map((r) => [r.itemId, r._sum.quantity || 0]));
+    const conMap = new Map(allConsumed.map((r) => [r.itemId, r._sum.quantity || 0]));
+    const traMap = new Map(allTransferred.map((r) => [r.itemId, r._sum.quantity || 0]));
 
-        return {
-          ...item,
-          stock,
-          totalIncoming: totalIncoming._sum.quantity || 0,
-          totalConsumed: totalConsumed._sum.quantity || 0,
-          totalTransferred: totalTransferred._sum.quantity || 0,
-        };
-      })
-    );
+    const itemsWithStock = items.map((item) => {
+      const totalIncoming = incMap.get(item.id) || 0;
+      const totalConsumed = conMap.get(item.id) || 0;
+      const totalTransferred = traMap.get(item.id) || 0;
+      const stock = totalIncoming - totalConsumed - totalTransferred;
+
+      return {
+        ...item,
+        stock,
+        totalIncoming,
+        totalConsumed,
+        totalTransferred,
+      };
+    });
 
     return NextResponse.json(itemsWithStock);
   } catch (error) {
