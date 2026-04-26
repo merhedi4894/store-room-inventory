@@ -57,6 +57,7 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
+  LogOut,
 } from "lucide-react";
 
 // Password & security constants
@@ -209,6 +210,11 @@ export default function Home() {
   const [forgotStep, setForgotStep] = useState<1 | 2>(1); // 1=answer question, 2=new password
   const [showPassword, setShowPassword] = useState(false);
 
+  // Delete confirmation dialog
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmMsg, setDeleteConfirmMsg] = useState("");
+  const [deleteConfirmAction, setDeleteConfirmAction] = useState<(() => void) | null>(null);
+
   // Check session on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -217,6 +223,61 @@ export default function Home() {
         setIsAuthenticated(true);
       }
     }
+  }, []);
+
+  // ========== LOGOUT ==========
+  const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem(SS_AUTH_KEY);
+    setIsAuthenticated(false);
+    setItems([]);
+    setIncomingRecords([]);
+    setConsumedRecords([]);
+    setTransferredRecords([]);
+    setDashboardData(null);
+    setLoading(false);
+    setItemPage(1);
+    setActiveTab("dashboard");
+    setSearchTerm("");
+  }, []);
+
+  // Idle auto-logout
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        handleLogout();
+        toast.info("১০ মিনিট নিষ্ক্রিয় থাকায় স্বয়ংক্রিয়ভাবে লগ আউট হয়েছে");
+      }, IDLE_TIMEOUT);
+    };
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach((e) => window.addEventListener(e, resetTimer));
+    resetTimer();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+  }, [isAuthenticated, handleLogout]);
+
+  // Custom confirm dialog helper
+  const showDeleteConfirm = useCallback((msg: string, action: () => void) => {
+    setDeleteConfirmMsg(msg);
+    setDeleteConfirmAction(() => action);
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const handleDeleteConfirmYes = useCallback(() => {
+    setDeleteConfirmOpen(false);
+    if (deleteConfirmAction) deleteConfirmAction();
+    setDeleteConfirmAction(null);
+  }, [deleteConfirmAction]);
+
+  const handleDeleteConfirmNo = useCallback(() => {
+    setDeleteConfirmOpen(false);
+    setDeleteConfirmAction(null);
   }, []);
 
   const handleLogin = () => {
@@ -394,12 +455,15 @@ export default function Home() {
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!confirm("আপনি কি এই আইটেম মুছে ফেলতে চান? এর সাথে সম্পর্কিত সব রেকর্ডও মুছে যাবে।")) return;
-    const res = await fetch(`/api/items?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      fetchAllSilent();
-      toast.success("আইটেম মুছে ফেলা হয়েছে");
-    }
+    const doDelete = async () => {
+      const res = await fetch(`/api/items?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchAllSilent();
+        toast.success("আইটেম মুছে ফেলা হয়েছে");
+      }
+    };
+    showDeleteConfirm("আপনি কি এই আইটেম মুছে ফেলতে চান? এর সাথে সম্পর্কিত সব রেকর্ডও মুছে যাবে।", doDelete);
+    return;
   };
 
   const handleEditItem = (item: Item) => {
@@ -459,12 +523,15 @@ export default function Home() {
   };
 
   const handleDeleteIncoming = async (id: string) => {
-    if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
-    const res = await fetch(`/api/incoming?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      fetchAllSilent();
-      toast.success("মালামাল ঢুকানো রেকর্ড মুছে ফেলা হয়েছে");
-    }
+    const doDelete = async () => {
+      const res = await fetch(`/api/incoming?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchAllSilent();
+        toast.success("মালামাল ঢুকানো রেকর্ড মুছে ফেলা হয়েছে");
+      }
+    };
+    showDeleteConfirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?", doDelete);
+    return;
   };
 
   // Consumed CRUD
@@ -514,12 +581,15 @@ export default function Home() {
   };
 
   const handleDeleteConsumed = async (id: string) => {
-    if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
-    const res = await fetch(`/api/consumed?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      fetchAllSilent();
-      toast.success("নস্ট রেকর্ড মুছে ফেলা হয়েছে");
-    }
+    const doDelete = async () => {
+      const res = await fetch(`/api/consumed?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchAllSilent();
+        toast.success("নস্ট রেকর্ড মুছে ফেলা হয়েছে");
+      }
+    };
+    showDeleteConfirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?", doDelete);
+    return;
   };
 
   // Transferred CRUD
@@ -588,12 +658,15 @@ export default function Home() {
   };
 
   const handleDeleteTransferred = async (id: string) => {
-    if (!confirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?")) return;
-    const res = await fetch(`/api/transferred?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      fetchAllSilent();
-      toast.success("স্থানান্তর রেকর্ড মুছে ফেলা হয়েছে");
-    }
+    const doDelete = async () => {
+      const res = await fetch(`/api/transferred?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchAllSilent();
+        toast.success("স্থানান্তর রেকর্ড মুছে ফেলা হয়েছে");
+      }
+    };
+    showDeleteConfirm("আপনি কি এই রেকর্ড মুছে ফেলতে চান?", doDelete);
+    return;
   };
 
   const filteredItems = items.filter(
@@ -792,6 +865,15 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white/90 hover:text-white hover:bg-white/20 min-h-[44px] gap-1.5 text-xs sm:text-sm"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">লগ আউট</span>
+              </Button>
               <div className="relative hidden sm:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -1562,6 +1644,30 @@ export default function Home() {
           স্টোর রুম ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম © {new Date().getFullYear()}
         </footer>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div className="text-center">
+              <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                <Trash2 className="h-7 w-7 text-red-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">মুছে ফেলতে চান?</h2>
+              <p className="text-sm text-gray-500 mt-2">{deleteConfirmMsg}</p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 min-h-[44px]" onClick={handleDeleteConfirmNo}>
+                বাতিল
+              </Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 min-h-[44px]" onClick={handleDeleteConfirmYes}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                মুছুন
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
