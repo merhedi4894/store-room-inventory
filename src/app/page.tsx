@@ -431,17 +431,26 @@ export default function Home() {
     }
   }, [fetchAllSilent]);
 
+  // Initial load on mount
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
+  // Re-fetch data when user logs in (fixes items not showing after login)
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAll();
+    }
+  }, [isAuthenticated, fetchAll]);
+
   // Item CRUD
   const handleAddItem = async () => {
     if (!itemName.trim()) return;
+    const stockVal = itemLowStock !== undefined && itemLowStock !== null && itemLowStock !== '' ? parseInt(itemLowStock) : null;
     const res = await fetch("/api/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: itemName, description: itemDesc, unit: itemUnit, lowStockThreshold: itemLowStock }),
+      body: JSON.stringify({ name: itemName, description: itemDesc, unit: itemUnit, lowStockThreshold: isNaN(stockVal as number) ? null : stockVal }),
     });
     if (res.ok) {
       setItemName("");
@@ -459,10 +468,11 @@ export default function Home() {
 
   const handleUpdateItem = async () => {
     if (!editItemId || !itemName.trim()) return;
+    const stockVal = itemLowStock !== undefined && itemLowStock !== null && itemLowStock !== '' ? parseInt(itemLowStock) : null;
     const res = await fetch("/api/items", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editItemId, name: itemName, description: itemDesc, unit: itemUnit, lowStockThreshold: itemLowStock }),
+      body: JSON.stringify({ id: editItemId, name: itemName, description: itemDesc, unit: itemUnit, lowStockThreshold: isNaN(stockVal as number) ? null : stockVal }),
     });
     if (res.ok) {
       setItemName("");
@@ -949,26 +959,26 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-1 sm:gap-2 bg-white shadow-md border border-gray-100 rounded-xl p-1.5 overflow-hidden">
-            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-emerald-50 data-[state=inactive]:hover:text-emerald-700 transition-all duration-200">
-              <BarChart3 className="h-4 w-4" />
+          <TabsList className="grid w-full grid-cols-4 gap-1.5 sm:gap-2 bg-white shadow-md border border-gray-200 rounded-xl p-1.5">
+            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-emerald-50 transition-all duration-200 whitespace-nowrap">
+              <BarChart3 className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">ড্যাশবোর্ড</span>
               <span className="sm:hidden">ড্যাশ</span>
             </TabsTrigger>
-            <TabsTrigger value="incoming" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-blue-50 data-[state=inactive]:hover:text-blue-700 transition-all duration-200">
-              <PackagePlus className="h-4 w-4" />
+            <TabsTrigger value="incoming" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-blue-50 transition-all duration-200 whitespace-nowrap">
+              <PackagePlus className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">মালামাল ঢুকছে</span>
               <span className="sm:hidden">ঢুকছে</span>
             </TabsTrigger>
-            <TabsTrigger value="consumed" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-orange-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-orange-50 data-[state=inactive]:hover:text-orange-700 transition-all duration-200">
-              <PackageX className="h-4 w-4" />
+            <TabsTrigger value="consumed" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-orange-50 transition-all duration-200 whitespace-nowrap">
+              <PackageX className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">নস্ট হচ্ছে</span>
               <span className="sm:hidden">নস্ট</span>
             </TabsTrigger>
-            <TabsTrigger value="transferred" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-rose-200 min-h-[44px] text-xs sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-rose-50 data-[state=inactive]:hover:text-rose-700 transition-all duration-200">
-              <Truck className="h-4 w-4" />
+            <TabsTrigger value="transferred" className="flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-sm min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-lg data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-rose-50 transition-all duration-200 whitespace-nowrap">
+              <Truck className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">স্থানান্তরিত</span>
-              <span className="sm:hidden">স্থানান্তর</span>
+              <span className="sm:hidden">স্থান.</span>
             </TabsTrigger>
           </TabsList>
 
