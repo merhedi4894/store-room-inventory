@@ -282,18 +282,55 @@ export default function Home() {
     setDeleteConfirmAction(null);
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!loginPassword.trim()) { setLoginError("পাসওয়ার্ড লিখুন"); return; }
-    const storedPass = localStorage.getItem(LS_PASSWORD_KEY) || DEFAULT_PASSWORD;
+    // Check password: first try localStorage, then fall back to default
+    let storedPass = localStorage.getItem(LS_PASSWORD_KEY) || DEFAULT_PASSWORD;
+    // Also fetch password from database if available
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const settings = await res.json();
+        if (settings.password) {
+          storedPass = settings.password;
+        }
+      }
+    } catch { /* fallback to localStorage */ }
+
     if (loginPassword === storedPass) {
       sessionStorage.setItem(SS_AUTH_KEY, "true");
       setIsAuthenticated(true);
       setLoginError("");
       setLoginPassword("");
-      // Check if security answer is set (only show setup if never set before)
-      const hasSecurity = !!localStorage.getItem(LS_SECURITY_KEY);
-      if (!hasSecurity) {
-        setShowSecuritySetup(true);
+      // Check if security answer exists in database
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const settings = await res.json();
+          // Only show security setup if NOT set in database
+          if (!settings.security_answer) {
+            // Also check localStorage as fallback for migration
+            const lsAnswer = localStorage.getItem(LS_SECURITY_KEY);
+            if (lsAnswer) {
+              // Migrate from localStorage to database
+              await fetch("/api/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ key: "security_answer", value: lsAnswer }),
+              });
+            } else {
+              setShowSecuritySetup(true);
+            }
+          } else {
+            // Ensure localStorage is synced with database
+            localStorage.setItem(LS_SECURITY_KEY, settings.security_answer);
+          }
+        }
+      } catch { /* fallback: check localStorage only */
+        const hasSecurity = !!localStorage.getItem(LS_SECURITY_KEY);
+        if (!hasSecurity) {
+          setShowSecuritySetup(true);
+        }
       }
     } else {
       setLoginError("ভুল পাসওয়ার্ড!");
@@ -301,22 +338,41 @@ export default function Home() {
     }
   };
 
-  const handleSecuritySetup = () => {
+  const handleSecuritySetup = async () => {
     if (!securityAnswer.trim()) { setSecuritySetupError("উত্তর দিন"); return; }
     if (securityAnswer.toLowerCase() !== securitySetupConfirm.toLowerCase()) {
       setSecuritySetupError("উত্তর দুইবার একই হতে হবে");
       return;
     }
-    localStorage.setItem(LS_SECURITY_KEY, securityAnswer.toLowerCase().trim());
+    const answer = securityAnswer.toLowerCase().trim();
+    // Save to both localStorage and database
+    localStorage.setItem(LS_SECURITY_KEY, answer);
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "security_answer", value: answer }),
+      });
+    } catch { /* DB save failed, localStorage is enough for now */ }
     setShowSecuritySetup(false);
     setSecurityAnswer("");
     setSecuritySetupConfirm("");
     setSecuritySetupError("");
   };
 
-  const handleForgotStep1 = () => {
+  const handleForgotStep1 = async () => {
     if (!forgotAnswer.trim()) { setForgotError("উত্তর লিখুন"); return; }
-    const storedAnswer = localStorage.getItem(LS_SECURITY_KEY);
+    // Check security answer from database first, then localStorage fallback
+    let storedAnswer = localStorage.getItem(LS_SECURITY_KEY);
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const settings = await res.json();
+        if (settings.security_answer) {
+          storedAnswer = settings.security_answer;
+        }
+      }
+    } catch { /* fallback to localStorage */ }
     if (!storedAnswer) {
       setForgotError("নিরাপত্তা উত্তর সেট করা হয়নি। ডিফল্ট পাসওয়ার্ড: admin123");
       return;
@@ -338,7 +394,16 @@ export default function Home() {
       setForgotError("পাসওয়ার্ড মিলছে না");
       return;
     }
-    localStorage.setItem(LS_PASSWORD_KEY, forgotNewPass.trim());
+    const newPass = forgotNewPass.trim();
+    // Save password to both localStorage and database
+    localStorage.setItem(LS_PASSWORD_KEY, newPass);
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "password", value: newPass }),
+      });
+    } catch { /* DB save failed, localStorage is enough for now */ }
     setForgotError("");
     setShowForgotPassword(false);
     setForgotStep(1);
@@ -991,7 +1056,7 @@ export default function Home() {
             <TabsTrigger value="transferred" className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow-md min-h-[42px] sm:min-h-[46px] text-[11px] sm:text-sm rounded-xl data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 data-[state=inactive]:shadow-sm data-[state=inactive]:border data-[state=inactive]:border-gray-200 data-[state=inactive]:hover:bg-violet-50 transition-all duration-200 whitespace-nowrap">
               <Truck className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">স্থানান্তরিত</span>
-              <span className="sm:hidden">স্থান.</span>
+              <span className="sm:hidden">স্থানান্তর</span>
             </TabsTrigger>
           </TabsList>
 
