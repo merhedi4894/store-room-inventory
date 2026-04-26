@@ -815,7 +815,7 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-1 sm:gap-2 bg-white shadow-sm p-1">
+          <TabsList className="grid w-full grid-cols-4 gap-1 sm:gap-2 bg-white shadow-sm p-1 overflow-hidden">
             <TabsTrigger value="dashboard" className="flex items-center justify-center gap-1 sm:gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white min-h-[44px] text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">ড্যাশবোর্ড</span>
@@ -1498,7 +1498,7 @@ export default function Home() {
                         </Badge>
                         <span className="text-xs text-blue-600 flex-shrink-0 font-medium">ঢুকেছে: {item.totalIncoming}</span>
                         <span className="text-xs text-red-500 flex-shrink-0 font-medium">নস্ট: {item.totalConsumed}</span>
-                        <span className="text-xs text-[#E8272C] flex-shrink-0 font-medium hidden sm:inline">স্থানান্তর: {item.totalTransferred}</span>
+                        <span className="text-xs text-[#E8272C] flex-shrink-0 font-medium">স্থানান্তর: {item.totalTransferred}</span>
                         <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
                           <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-7 w-7 p-0" onClick={() => handleEditItem(item)}>
                             <Edit2 className="h-3.5 w-3.5" />
