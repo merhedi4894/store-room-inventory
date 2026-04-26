@@ -385,7 +385,7 @@ export default function Home() {
     }
   };
 
-  const handleForgotStep2 = () => {
+  const handleForgotStep2 = async () => {
     if (!forgotNewPass.trim() || forgotNewPass.length < 4) {
       setForgotError("পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে");
       return;
