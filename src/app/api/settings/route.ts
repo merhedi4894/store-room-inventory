@@ -11,11 +11,18 @@ async function ensureTable() {
         "key" TEXT NOT NULL,
         "value" TEXT NOT NULL,
         "updatedAt" DATETIME NOT NULL
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS "AppSetting_key_key" ON "AppSetting"("key");
+      )
     `);
   } catch (error) {
-    console.error('Error ensuring AppSetting table:', error);
+    console.error('Error creating AppSetting table:', error);
+  }
+  try {
+    const database = await db();
+    await database.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "AppSetting_key_key" ON "AppSetting"("key")
+    `);
+  } catch (error) {
+    console.error('Error creating index:', error);
   }
 }
 
